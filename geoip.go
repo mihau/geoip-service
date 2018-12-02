@@ -35,6 +35,7 @@ func main() {
 	var pretty = flag.Bool("pretty", false, "Should output be formatted with newlines and intentation")
 	var cacheSecs = flag.Int("cache", 0, "How many seconds should requests be cached. Set to 0 to disable")
 	var originPolicy = flag.String("origin", "*", `Value sent in the 'Access-Control-Allow-Origin' header. Set to "" to disable.`)
+	var useClientIP = flag.Bool("clientip", false, "When true the app returns information on clients ip when none is passed, based on X-Forwarded-For header")
 	serverStart := time.Now().Format(http.TimeFormat)
 
 	flag.Parse()
@@ -60,6 +61,7 @@ func main() {
 
 	// We dereference this to avoid a pretty big penalty under heavy load.
 	prettyL := *pretty
+	useClientIPL := *useClientIP
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		var ipText string
@@ -112,6 +114,10 @@ func main() {
 		if ipText == "" {
 			ipText = strings.Trim(req.URL.Path, "/")
 		}
+		if ipText == "" && useClientIPL {
+			ipText = req.Header.Get("X-Forwarded-For")
+		}
+
 		ip := net.ParseIP(ipText)
 		if ip == nil {
 			returnError = "unable to decode ip"
